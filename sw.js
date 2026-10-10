@@ -1,5 +1,5 @@
 // Bump CACHE when you change any app file so phones pick up the new version
-const CACHE = 'cash-calc-v3';
+const CACHE = 'cash-calc-v4';
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './db.js', './utils.js', './firebase-config.js',
@@ -9,7 +9,9 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  // cache: 'reload' skips the browser HTTP cache (GitHub Pages sends max-age=600)
+  event.waitUntil(caches.open(CACHE)
+    .then((cache) => cache.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' })))));
   self.skipWaiting();
 });
 
@@ -29,8 +31,13 @@ const isCacheable = (url) => url.origin === self.location.origin || url.href.sta
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || !isCacheable(url)) return;
+  // no-cache: always ask the server (cheap 304 if unchanged) so updates show up immediately.
+  // Navigation requests can't be cloned with options, so rebuild them from the URL.
+  const fresh = event.request.mode === 'navigate'
+    ? new Request(event.request.url, { cache: 'no-cache' })
+    : new Request(event.request, { cache: 'no-cache' });
   event.respondWith(
-    fetch(event.request)
+    fetch(fresh)
       .then((response) => {
         if (response.ok) {
           const copy = response.clone();
