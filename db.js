@@ -4,7 +4,8 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, terminate,
+  clearIndexedDbPersistence,
   collection, collectionGroup, doc, setDoc, deleteDoc, getDocs, query, where, orderBy,
   onSnapshot, serverTimestamp, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
@@ -20,6 +21,8 @@ import { firebaseConfig } from './firebase-config.js';
 export const CURRENCIES = ['PLN', 'USD', 'EUR', 'UAH', 'USDT'];
 export const KINDS = ['required', 'optional'];
 export const NAME_MAX = 120;
+export const AMOUNT_MAX = 1e9; // must match firestore.rules
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/; // must match firestore.rules
 const BATCH_LIMIT = 500; // Firestore max writes per batch
 
 export const isConfigured = !Object.values(firebaseConfig).some((v) => String(v).includes('REPLACE_ME'));
@@ -29,9 +32,9 @@ export const isConfigured = !Object.values(firebaseConfig).some((v) => String(v)
  * @returns {boolean}
  */
 export const isValidEntry = (e) => Boolean(e) && typeof e === 'object'
-  && typeof e.id === 'string' && e.id.length > 0
+  && typeof e.id === 'string' && ID_PATTERN.test(e.id)
   && typeof e.name === 'string' && e.name.length > 0 && e.name.length <= NAME_MAX
-  && typeof e.amount === 'number' && Number.isFinite(e.amount) && e.amount > 0
+  && typeof e.amount === 'number' && Number.isFinite(e.amount) && e.amount > 0 && e.amount < AMOUNT_MAX
   && CURRENCIES.includes(e.currency)
   && KINDS.includes(e.kind)
   && typeof e.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.date);
@@ -65,8 +68,20 @@ export const watchAuth = (callback) => onAuthStateChanged(auth, callback);
 /** @param {string} email @param {string} password @returns {Promise<unknown>} */
 export const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
 
-/** @returns {Promise<void>} */
-export const logout = () => signOut(auth);
+/**
+ * Sign out and wipe the offline cache, so the next person using this device
+ * can't read cached records. Firestore is unusable afterwards: reload the page.
+ * @returns {Promise<void>}
+ */
+export const logout = async () => {
+  await signOut(auth);
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+  } catch (err) {
+    console.error('Не вдалося очистити офлайн-кеш', err);
+  }
+};
 
 /**
  * Live subscription to entries with startDate <= date < endDate (ISO strings).

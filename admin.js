@@ -76,7 +76,7 @@ el.loginForm.addEventListener('submit', async (ev) => {
   }
 });
 
-const handleLogout = () => logout().catch((err) => {
+const handleLogout = () => logout().then(() => location.reload()).catch((err) => {
   console.error('Вихід не вдався', err);
   alert('Не вдалося вийти.');
 });

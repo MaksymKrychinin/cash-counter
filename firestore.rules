@@ -15,7 +15,7 @@ service cloud.firestore {
       return d.keys().hasAll(['name', 'amount', 'currency', 'kind', 'date'])
         && d.keys().hasOnly(['name', 'amount', 'currency', 'kind', 'date', 'updatedAt'])
         && d.name is string && d.name.size() > 0 && d.name.size() <= 120
-        && d.amount is number && d.amount > 0
+        && d.amount is number && d.amount > 0 && d.amount < 1000000000
         && d.currency in ['PLN', 'USD', 'EUR', 'UAH', 'USDT']
         && d.kind in ['required', 'optional']
         && d.date is string && d.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
@@ -38,7 +38,9 @@ service cloud.firestore {
     match /users/{userId}/entries/{entryId} {
       allow read: if isOwner(userId) || isAdmin();
       allow delete: if isOwner(userId);
-      allow create, update: if isOwner(userId) && isValidEntry(request.resource.data);
+      allow create, update: if isOwner(userId)
+        && entryId.matches('^[A-Za-z0-9_-]{1,64}$')
+        && isValidEntry(request.resource.data);
     }
 
     // Collection-group queries over all users' entries (admin dashboard)

@@ -1,7 +1,7 @@
 // UI layer. Data lives in Firestore (see db.js); this file only renders and reacts.
 import {
   CURRENCIES, isConfigured, watchAuth, login, logout, watchRange,
-  saveEntry, removeEntry, fetchAll, importEntries, saveProfile,
+  saveEntry, removeEntry, fetchAll, importEntries, saveProfile, isAdminUser, AMOUNT_MAX,
 } from './db.js';
 import {
   authErrorMessage, todayISO, monthKey, shiftMonth, monthRange,
@@ -18,6 +18,7 @@ const el = {
   loginForm: $('loginForm'), loginEmail: $('loginEmail'), loginPassword: $('loginPassword'),
   loginBtn: $('loginBtn'), loginError: $('loginError'),
   userEmail: $('userEmail'), logoutBtn: $('logoutBtn'), syncStatus: $('syncStatus'),
+  adminLink: $('adminLink'),
   form: $('form'), formTitle: $('formTitle'), amount: $('amount'), currency: $('currency'),
   name: $('name'), date: $('date'), submitBtn: $('submitBtn'), cancelEdit: $('cancelEdit'),
   monthTitle: $('monthTitle'), prevMonth: $('prevMonth'), nextMonth: $('nextMonth'),
@@ -30,7 +31,7 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID()
   : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const parseAmount = (raw) => {
   const n = Number(String(raw).replace(/\s/g, '').replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+  return Number.isFinite(n) && n > 0 && n < AMOUNT_MAX ? Math.round(n * 100) / 100 : null;
 };
 
 // ---------- state ----------
@@ -101,9 +102,13 @@ el.loginForm.addEventListener('submit', async (ev) => {
 });
 
 el.logoutBtn.addEventListener('click', async () => {
-  if (!confirm('Вийти з акаунту?')) return;
+  const question = state.sync.pending
+    ? 'Деякі записи ще не синхронізовані і будуть втрачені. Все одно вийти?'
+    : 'Вийти з акаунту?';
+  if (!confirm(question)) return;
   try {
     await logout();
+    location.reload();
   } catch (err) {
     console.error('Вихід не вдався', err);
     alert('Не вдалося вийти.');
@@ -138,7 +143,7 @@ const readForm = () => {
   const amount = parseAmount(el.amount.value);
   const name = el.name.value.trim();
   const date = el.date.value;
-  if (amount === null) return { error: 'Введіть суму більше нуля.', field: el.amount };
+  if (amount === null) return { error: 'Введіть суму від 0,01 до 1 000 000 000.', field: el.amount };
   if (!name) return { error: 'Введіть назву платежу.', field: el.name };
   if (!date) return { error: 'Оберіть дату.', field: el.date };
   return { value: { name, amount, date, currency: el.currency.value, kind: el.form.kind.value } };
@@ -282,6 +287,7 @@ const render = () => {
   el.appScreen.hidden = !state.user;
   if (!state.user) return;
   el.userEmail.textContent = state.user.email || '';
+  el.adminLink.hidden = !isAdminUser(state.user);
   el.monthTitle.textContent = fmtMonth(state.month);
   renderSync();
   renderTotals();

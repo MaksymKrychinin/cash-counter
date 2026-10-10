@@ -73,6 +73,8 @@ button {
 }
 button.primary { background: var(--accent); color: var(--accent-text); font-weight: 600; width: 100%; }
 button.link { background: none; padding: 6px 8px; color: var(--accent); }
+a.link { color: var(--accent); text-decoration: none; padding: 6px 8px; display: inline-block; font-size: 16px; }
+[hidden] { display: none !important; }
 .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .month-nav h2 { margin: 0; text-transform: capitalize; }
 .month-nav button { width: 44px; height: 44px; padding: 0; font-size: 20px; }
