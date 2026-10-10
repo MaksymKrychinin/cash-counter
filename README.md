@@ -4,7 +4,7 @@ A single-page expense calculator with a Ukrainian interface. It runs on GitHub P
 
 ## 1. Firebase setup (one time, free "Spark" plan)
 1. Go to https://console.firebase.google.com → **Add project** (you can turn off Google Analytics).
-2. **Build → Firestore Database → Create database** → *production mode* → region `europe-central2` (Warsaw).
+2. **Build → Firestore Database → Create database** → **Standard edition**, database ID `(default)`, *production mode*, region `europe-central2` (Warsaw).
 3. **Firestore → Rules**: replace everything with the contents of `firestore.rules` → **Publish**.
 4. **Build → Authentication → Get started → Email/Password → Enable**.
 5. **Authentication → Users → Add user**: enter your email and a strong password. This is your login.
@@ -18,8 +18,16 @@ A single-page expense calculator with a Ukrainian interface. It runs on GitHub P
 2. Go to **Settings → Pages** → Source: *Deploy from a branch* → `main` / `(root)`.
 3. On the iPhone, open `https://<user>.github.io/<repo>/` in Safari → Share → **Add to Home Screen** → log in.
 
+## Admin dashboard (`admin.html`)
+Open `https://<user>.github.io/<repo>/admin.html`. It shows each user's spending per month (required / optional / total per currency) and how many users were active.
+1. **Authentication → Users**: copy the **User UID** of your admin account.
+2. **Firestore → Data → Start collection** `admins` → Document ID = that UID → add any field (e.g. `role` = `admin`) → Save.
+   The rules let nobody write to `admins` from the app, so only the console can make someone an admin.
+3. The first time you open the dashboard it asks for an index (all users' records are read together). Open the browser console, click the link in the error, and press **Create index**. You can also add it by hand: **Firestore → Indexes → Single field → Add exemption** → collection `entries`, field `date`, enable *Collection group* scope (ascending). It takes a few minutes to build.
+4. Users appear with their email once they open the updated app (the app saves the email on login).
+
 ## How data is kept
-- Every record is saved to Firestore at `users/{uid}/entries/{id}`. Only your account can read or write it.
+- Every record is saved to Firestore at `users/{uid}/entries/{id}`. Only that user can change it; the user and admins can read it.
 - Offline, records are saved on the phone and sync automatically when you're back online. The status line shows ✓ / ⏳ / ☁︎.
   Wait for ✓ before you log out or reinstall the app.
 - The first login needs internet. After that you stay logged in.

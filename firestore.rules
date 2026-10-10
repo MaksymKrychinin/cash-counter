@@ -5,6 +5,12 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
+    // Admins: documents admins/{uid}, created by hand in the Firebase console
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     function isValidEntry(d) {
       return d.keys().hasAll(['name', 'amount', 'currency', 'kind', 'date'])
         && d.keys().hasOnly(['name', 'amount', 'currency', 'kind', 'date', 'updatedAt'])
@@ -16,10 +22,32 @@ service cloud.firestore {
         && d.updatedAt == request.time;
     }
 
-    // Each user can only see and change their own records
+    function isValidProfile(d) {
+      return d.keys().hasOnly(['email', 'lastSeen'])
+        && d.email == request.auth.token.email
+        && d.lastSeen == request.time;
+    }
+
+    match /admins/{userId} {
+      allow read: if isOwner(userId);
+    }
+
+    // Profile: email + last visit (for the admin dashboard)
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) && isValidProfile(request.resource.data);
+    }
+
+    // Each user can only see and change their own records; admins can read all
     match /users/{userId}/entries/{entryId} {
-      allow read, delete: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidEntry(request.resource.data);
+    }
+
+    // Collection-group queries over all users' entries (admin dashboard)
+    match /{path=**}/entries/{entryId} {
+      allow read: if isAdmin();
     }
   }
 }

@@ -5,8 +5,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, setDoc, deleteDoc, getDocs, query, where, orderBy, onSnapshot,
-  serverTimestamp, writeBatch,
+  collection, collectionGroup, doc, setDoc, getDoc, deleteDoc, getDocs, query, where, orderBy,
+  onSnapshot, serverTimestamp, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 
@@ -120,4 +120,43 @@ export const importEntries = async (uid, incoming) => {
     return batch.commit();
   }));
   return { added: fresh.length, skipped: incoming.length - fresh.length };
+};
+
+// ---------- profiles & admin ----------
+
+/**
+ * Store the user's email + last visit so the admin dashboard can label users.
+ * @param {{ uid: string, email: string | null }} user @returns {Promise<void>}
+ */
+export const saveProfile = (user) => setDoc(doc(db, 'users', user.uid),
+  { email: user.email || '', lastSeen: serverTimestamp() });
+
+/**
+ * Admins are listed by uid in the `admins` collection (created by hand in the console).
+ * @param {string} uid @returns {Promise<boolean>}
+ */
+export const checkIsAdmin = async (uid) => (await getDoc(doc(db, 'admins', uid))).exists();
+
+/** @returns {Promise<{ uid: string, email: string, lastSeen: Date | null }[]>} admin only */
+export const fetchProfiles = async () => {
+  const snap = await getDocs(collection(db, 'users'));
+  return snap.docs.map((d) => {
+    const { email, lastSeen } = d.data();
+    return { uid: d.id, email: typeof email === 'string' ? email : '', lastSeen: lastSeen ? lastSeen.toDate() : null };
+  });
+};
+
+/**
+ * Entries of all users with startDate <= date < endDate. Admin only; needs the
+ * collection-group index on `entries.date` (see README).
+ * @param {string} startDate @param {string} endDate
+ * @returns {Promise<(Entry & { uid: string })[]>}
+ */
+export const fetchAllUsersEntries = async (startDate, endDate) => {
+  const q = query(collectionGroup(db, 'entries'),
+    where('date', '>=', startDate), where('date', '<', endDate));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => ({ ...fromDoc(d), uid: d.ref.parent.parent.id }))
+    .filter(isValidEntry);
 };

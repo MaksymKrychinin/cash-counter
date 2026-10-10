@@ -1,19 +1,16 @@
 // UI layer. Data lives in Firestore (see db.js); this file only renders and reacts.
 import {
   CURRENCIES, isConfigured, watchAuth, login, logout, watchRange,
-  saveEntry, removeEntry, fetchAll, importEntries,
+  saveEntry, removeEntry, fetchAll, importEntries, saveProfile,
 } from './db.js';
+import {
+  authErrorMessage, todayISO, monthKey, shiftMonth, monthRange,
+  fmt, fmtMonth, fmtDay, node, sumByCurrency, totalsTable,
+} from './utils.js';
 
 const DEFAULT_CURRENCY = 'PLN';
 const LEGACY_KEY = 'cash-calc.v1'; // records saved by the localStorage-only version
 const KIND_LABELS = { required: "Обов'язковий", optional: "Необов'язковий" };
-const AUTH_ERRORS = {
-  'auth/invalid-credential': 'Невірний email або пароль.',
-  'auth/invalid-email': 'Невірний формат email.',
-  'auth/user-disabled': 'Цей акаунт вимкнено.',
-  'auth/too-many-requests': 'Забагато спроб. Спробуйте пізніше.',
-  'auth/network-request-failed': "Немає з'єднання з інтернетом. Перший вхід потребує інтернету.",
-};
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -29,38 +26,11 @@ const el = {
 };
 
 // ---------- helpers ----------
-const pad = (n) => String(n).padStart(2, '0');
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-const monthKey = (iso) => iso.slice(0, 7);
-const shiftMonth = (key, delta) => {
-  const [y, m] = key.split('-').map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-};
 const newId = () => (crypto.randomUUID ? crypto.randomUUID()
   : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const parseAmount = (raw) => {
   const n = Number(String(raw).replace(/\s/g, '').replace(',', '.'));
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
-};
-const fmt = (n) => n.toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtMonth = (key) => {
-  const [y, m] = key.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' })
-    .replace(/\s*р\.$/, '');
-};
-const fmtDay = (iso) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
-};
-const node = (tag, text, className) => {
-  const n = document.createElement(tag);
-  if (text) n.textContent = text;
-  if (className) n.className = className;
-  return n;
 };
 
 // ---------- state ----------
@@ -82,8 +52,7 @@ const subscribeMonth = () => {
   if (unsubscribeMonth) unsubscribeMonth();
   unsubscribeMonth = null;
   if (!state.user) return;
-  const start = `${state.month}-01`;
-  const end = `${shiftMonth(state.month, 1)}-01`;
+  const { start, end } = monthRange(state.month);
   unsubscribeMonth = watchRange(state.user.uid, start, end,
     (entries, sync) => setState({ entries, sync }),
     (err) => {
@@ -125,7 +94,7 @@ el.loginForm.addEventListener('submit', async (ev) => {
     el.loginForm.reset();
   } catch (err) {
     console.error('Вхід не вдався', err);
-    el.loginError.textContent = AUTH_ERRORS[err && err.code] || 'Не вдалося увійти. Спробуйте ще раз.';
+    el.loginError.textContent = authErrorMessage(err);
   } finally {
     el.loginBtn.disabled = false;
   }
@@ -261,32 +230,12 @@ el.importFile.addEventListener('change', async () => {
 });
 
 // ---------- render ----------
-const sumByCurrency = (entries) => entries.reduce((acc, e) => {
-  const cur = acc[e.currency] || { required: 0, optional: 0 };
-  return { ...acc, [e.currency]: { ...cur, [e.kind]: cur[e.kind] + e.amount } };
-}, {});
-
 const renderTotals = () => {
   if (state.entries.length === 0) {
     el.totals.replaceChildren(node('p', 'Немає витрат за цей місяць', 'empty'));
     return;
   }
-  const sums = sumByCurrency(state.entries);
-  const head = node('tr');
-  head.append(node('th', 'Валюта'), node('th', "Обов'язкові", 'req'),
-    node('th', "Необов'язкові", 'opt'), node('th', 'Разом'));
-  const rows = CURRENCIES.filter((c) => sums[c]).map((c) => {
-    const { required, optional } = sums[c];
-    const tr = node('tr');
-    tr.append(node('td', c), node('td', fmt(required), 'req'),
-      node('td', fmt(optional), 'opt'), node('td', fmt(required + optional), 'sum'));
-    return tr;
-  });
-  const table = node('table', '', 'totals');
-  table.append(node('thead'), node('tbody'));
-  table.tHead.append(head);
-  table.tBodies[0].append(...rows);
-  el.totals.replaceChildren(table);
+  el.totals.replaceChildren(totalsTable(sumByCurrency(state.entries)));
 };
 
 const renderItem = (e) => {
@@ -352,6 +301,9 @@ if (isConfigured) {
     resetForm();
     setState({ user, entries: [], editingId: null });
     subscribeMonth();
-    if (user) migrateLocalData(user.uid);
+    if (!user) return;
+    // Email + last visit, so the admin dashboard can show who is who
+    saveProfile(user).catch((err) => console.error('Не вдалося зберегти профіль', err));
+    migrateLocalData(user.uid);
   });
 }

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Адмін-панель</title>
+<meta name="theme-color" content="#0f766e">
+<link rel="icon" href="icon-512.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <section id="setupScreen" class="card" hidden>
+    <h1>Адмін-панель</h1>
+    <p>Firebase ще не налаштовано. Заповніть <code>firebase-config.js</code> (див. README).</p>
+  </section>
+
+  <section id="loginScreen" hidden>
+    <h1>Адмін-панель</h1>
+    <form id="loginForm" class="card" novalidate>
+      <h2>Вхід адміністратора</h2>
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="loginPassword">Пароль</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="primary" id="loginBtn">Увійти</button>
+      <p class="error" id="loginError" role="alert"></p>
+    </form>
+  </section>
+
+  <section id="deniedScreen" class="card" hidden>
+    <h1>Немає доступу</h1>
+    <p>Акаунт <strong id="deniedEmail"></strong> не є адміністратором.</p>
+    <button type="button" id="deniedLogout">Вийти</button>
+  </section>
+
+  <div id="dashScreen" hidden>
+    <div class="topbar">
+      <h1>Адмін-панель</h1>
+      <div class="account"><span id="userEmail"></span><br><button type="button" class="link" id="logoutBtn">Вийти</button></div>
+    </div>
+
+    <section class="card">
+      <div class="month-nav">
+        <button type="button" id="prevMonth" aria-label="Попередній місяць">‹</button>
+        <h2 id="monthTitle"></h2>
+        <button type="button" id="nextMonth" aria-label="Наступний місяць">›</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-value" id="statActive">–</div><div class="stat-label">користувачів з витратами</div></div>
+        <div class="stat"><div class="stat-value" id="statUsers">–</div><div class="stat-label">усього користувачів</div></div>
+        <div class="stat"><div class="stat-value" id="statEntries">–</div><div class="stat-label">записів за місяць</div></div>
+      </div>
+      <h2 class="subhead">Разом по всіх</h2>
+      <div id="overallTotals"></div>
+      <p class="error" id="loadError" role="alert"></p>
+      <button type="button" id="refreshBtn">Оновити</button>
+    </section>
+
+    <h2 class="section-title">По користувачах</h2>
+    <div id="userCards"></div>
+    <div id="inactive"></div>
+  </div>
+</main>
+<script type="module" src="admin.js"></script>
+</body>
+</html>

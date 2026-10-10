@@ -1,8 +1,9 @@
 // Bump CACHE when you change any app file so phones pick up the new version
-const CACHE = 'cash-calc-v2';
+const CACHE = 'cash-calc-v3';
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
 const ASSETS = [
-  './', './index.html', './app.js', './db.js', './firebase-config.js',
+  './', './index.html', './styles.css', './app.js', './db.js', './utils.js', './firebase-config.js',
+  './admin.html', './admin.js',
   './manifest.webmanifest', './icon-180.png', './icon-512.png',
   `${SDK}firebase-app.js`, `${SDK}firebase-auth.js`, `${SDK}firebase-firestore.js`,
 ];
