@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Мої витрати</title>
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Витрати">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-512.png">
+<style>
+  :root {
+    --bg: #f4f6f5;
+    --card: #ffffff;
+    --text: #17201e;
+    --muted: #64716e;
+    --border: #dfe5e3;
+    --accent: #0f766e;
+    --accent-text: #ffffff;
+    --required: #b45309;
+    --optional: #2563eb;
+    --danger: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1312;
+      --card: #182120;
+      --text: #e8efed;
+      --muted: #94a3a0;
+      --border: #2a3533;
+      --accent: #2dd4bf;
+      --accent-text: #052e2b;
+      --required: #fbbf24;
+      --optional: #60a5fa;
+      --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  main { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 16px 0 12px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, select, button { font: inherit; color: inherit; }
+  input, select {
+    width: 100%;
+    /* 16px+ prevents iOS zoom on focus */
+    font-size: 17px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .row > * { flex: 1; min-width: 0; }
+  .row > .narrow { flex: 0 0 96px; }
+  .field { margin-bottom: 10px; }
+  .segmented { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+  .segmented label {
+    flex: 1; margin: 0; text-align: center; padding: 10px 6px;
+    font-size: 15px; color: var(--text); cursor: pointer;
+  }
+  .segmented input:checked + label { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button {
+    border: 0; border-radius: 10px; padding: 12px 14px; cursor: pointer;
+    background: var(--border); font-size: 16px;
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); font-weight: 600; width: 100%; }
+  button.link { background: none; padding: 6px 8px; color: var(--accent); }
+  .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .month-nav h2 { margin: 0; text-transform: capitalize; }
+  .month-nav button { width: 44px; height: 44px; padding: 0; font-size: 20px; }
+  .totals { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .totals th, .totals td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--border); }
+  .totals th:first-child, .totals td:first-child { text-align: left; }
+  .totals th { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .totals tr:last-child td { border-bottom: 0; }
+  .totals td.sum { font-weight: 600; }
+  .req { color: var(--required); }
+  .opt { color: var(--optional); }
+  .empty { color: var(--muted); text-align: center; padding: 8px 0; margin: 0; }
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  ul.list li {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  ul.list li:last-child { border-bottom: 0; }
+  ul.list li.empty { display: block; }
+  .item-main { flex: 1; min-width: 0; }
+  .item-name { overflow-wrap: anywhere; }
+  .item-meta { font-size: 13px; color: var(--muted); }
+  .item-amount { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .item-actions { display: flex; }
+  .item-actions button { background: none; padding: 8px; font-size: 18px; }
+  .backup-buttons { display: flex; gap: 10px; }
+  .backup-buttons > * { flex: 1; }
+  .hint { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+  .editing-note { font-size: 13px; color: var(--accent); margin-bottom: 8px; display: none; }
+  .editing .editing-note { display: block; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 0 12px; }
+  .topbar h1 { margin: 0; }
+  .account { font-size: 13px; color: var(--muted); text-align: right; min-width: 0; overflow-wrap: anywhere; }
+  .sync { font-size: 13px; margin: -4px 0 12px; }
+  .sync.ok { color: var(--muted); }
+  .sync.pending, .sync.offline { color: var(--required); }
+  .error { color: var(--danger); font-size: 14px; min-height: 1.4em; margin: 8px 0 0; }
+  code { font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <section id="setupScreen" class="card" hidden>
+    <h1>Мої витрати</h1>
+    <p>Firebase ще не налаштовано. Заповніть <code>firebase-config.js</code> (див. README).</p>
+  </section>
+
+  <section id="loginScreen" hidden>
+    <h1>Мої витрати</h1>
+    <form id="loginForm" class="card" novalidate>
+      <h2>Вхід</h2>
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="loginPassword">Пароль</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="primary" id="loginBtn">Увійти</button>
+      <p class="error" id="loginError" role="alert"></p>
+    </form>
+  </section>
+
+  <div id="appScreen" hidden>
+  <div class="topbar">
+    <h1>Мої витрати</h1>
+    <div class="account"><span id="userEmail"></span><br><button type="button" class="link" id="logoutBtn">Вийти</button></div>
+  </div>
+  <div id="syncStatus" class="sync"></div>
+
+  <form id="form" class="card" autocomplete="off" novalidate>
+    <h2 id="formTitle">Новий платіж</h2>
+    <div class="editing-note">Редагування запису · <button type="button" class="link" id="cancelEdit">Скасувати</button></div>
+    <div class="row">
+      <div>
+        <label for="amount">Сума</label>
+        <input id="amount" inputmode="decimal" placeholder="0,00" required>
+      </div>
+      <div class="narrow">
+        <label for="currency">Валюта</label>
+        <select id="currency"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="name">Назва платежу</label>
+      <input id="name" placeholder="Напр. Оренда, Продукти" maxlength="120" required>
+    </div>
+    <div class="field">
+      <label>Тип</label>
+      <div class="segmented">
+        <input type="radio" name="kind" id="kindRequired" value="required" checked>
+        <label for="kindRequired">Обов'язковий</label>
+        <input type="radio" name="kind" id="kindOptional" value="optional">
+        <label for="kindOptional">Необов'язковий</label>
+      </div>
+    </div>
+    <div class="field">
+      <label for="date">Дата</label>
+      <input id="date" type="date" required>
+    </div>
+    <button type="submit" class="primary" id="submitBtn">Додати</button>
+  </form>
+
+  <section class="card">
+    <div class="month-nav">
+      <button type="button" id="prevMonth" aria-label="Попередній місяць">‹</button>
+      <h2 id="monthTitle"></h2>
+      <button type="button" id="nextMonth" aria-label="Наступний місяць">›</button>
+    </div>
+    <div id="totals"></div>
+  </section>
+
+  <section class="card">
+    <h2>Записи за місяць</h2>
+    <ul id="list" class="list"></ul>
+  </section>
+
+  <section class="card">
+    <h2>Резервна копія</h2>
+    <div class="backup-buttons">
+      <button type="button" id="exportBtn">Експорт</button>
+      <button type="button" id="importBtn">Імпорт</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+    <p class="hint">Дані зберігаються у хмарі (Firebase) і працюють офлайн. Експорт — додаткова копія у «Файли»/iCloud.</p>
+  </section>
+  </div>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

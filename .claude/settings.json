@@ -1,0 +1,18 @@
+{
+  "extraKnownMarketplaces": {
+    "ecc": {
+      "source": { "source": "github", "repo": "affaan-m/ECC" }
+    }
+  },
+  "enabledPlugins": {
+    "ecc@ecc": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm test:*)",
+      "Bash(npm run bench:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx vitest:*)"
+    ]
+  }
+}
