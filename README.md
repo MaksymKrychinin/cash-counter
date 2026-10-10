@@ -20,9 +20,9 @@ A single-page expense calculator with a Ukrainian interface. It runs on GitHub P
 
 ## Admin dashboard (`admin.html`)
 Open `https://<user>.github.io/<repo>/admin.html`. It shows each user's spending per month (required / optional / total per currency) and how many users were active.
-1. **Authentication → Users**: copy the **User UID** of your admin account.
-2. **Firestore → Data → Start collection** `admins` → Document ID = that UID → add any field (e.g. `role` = `admin`) → Save.
-   The rules let nobody write to `admins` from the app, so only the console can make someone an admin.
+1. The admin account is **`admin@admin.com`**. Create it in **Authentication → Users → Add user** with a strong password.
+   To change it, edit `isAdmin()` in `firestore.rules` and `ADMIN_EMAILS` in `db.js`.
+2. Keep **sign-up disabled** (step 6 above). Otherwise, if the admin account is ever deleted, anyone could register that email and see everyone's data.
 3. The first time you open the dashboard it asks for an index (all users' records are read together). Open the browser console, click the link in the error, and press **Create index**. You can also add it by hand: **Firestore → Indexes → Single field → Add exemption** → collection `entries`, field `date`, enable *Collection group* scope (ascending). It takes a few minutes to build.
 4. Users appear with their email once they open the updated app (the app saves the email on login).
 

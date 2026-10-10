@@ -1,6 +1,6 @@
 // Admin dashboard: monthly spending of every user. Read-only.
 import {
-  isConfigured, watchAuth, login, logout, checkIsAdmin, fetchProfiles, fetchAllUsersEntries,
+  isConfigured, watchAuth, login, logout, isAdminUser, fetchProfiles, fetchAllUsersEntries,
 } from './db.js';
 import {
   authErrorMessage, todayISO, monthKey, shiftMonth, monthRange, fmtMonth, node,
@@ -37,7 +37,7 @@ const setState = (patch) => {
 };
 
 const loadErrorMessage = (err) => {
-  if (err && err.code === 'permission-denied') return 'Немає доступу. Перевірте правила Firestore та документ admins/{uid}.';
+  if (err && err.code === 'permission-denied') return 'Немає доступу. Перевірте, що правила Firestore опубліковані.';
   if (err && err.code === 'failed-precondition') return 'Потрібен індекс для entries.date (див. README). Посилання на створення — у консолі браузера.';
   return "Не вдалося завантажити дані. Перевірте з'єднання.";
 };
@@ -164,17 +164,12 @@ const render = () => {
 render();
 
 if (isConfigured) {
-  watchAuth(async (user) => {
+  watchAuth((user) => {
     if (!user) {
       setState({ user: null, isAdmin: false, profiles: [], entries: [] });
       return;
     }
-    let isAdmin = false;
-    try {
-      isAdmin = await checkIsAdmin(user.uid);
-    } catch (err) {
-      console.error('Не вдалося перевірити права адміністратора', err);
-    }
+    const isAdmin = isAdminUser(user);
     setState({ user, isAdmin });
     if (isAdmin) loadMonth();
   });

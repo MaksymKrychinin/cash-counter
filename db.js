@@ -5,7 +5,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, collectionGroup, doc, setDoc, getDoc, deleteDoc, getDocs, query, where, orderBy,
+  collection, collectionGroup, doc, setDoc, deleteDoc, getDocs, query, where, orderBy,
   onSnapshot, serverTimestamp, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
@@ -131,11 +131,12 @@ export const importEntries = async (uid, incoming) => {
 export const saveProfile = (user) => setDoc(doc(db, 'users', user.uid),
   { email: user.email || '', lastSeen: serverTimestamp() });
 
-/**
- * Admins are listed by uid in the `admins` collection (created by hand in the console).
- * @param {string} uid @returns {Promise<boolean>}
- */
-export const checkIsAdmin = async (uid) => (await getDoc(doc(db, 'admins', uid))).exists();
+// Must match isAdmin() in firestore.rules. This only decides what the UI shows;
+// the rules are what actually grant access.
+const ADMIN_EMAILS = ['admin@admin.com'];
+
+/** @param {{ email: string | null }} user @returns {boolean} */
+export const isAdminUser = (user) => ADMIN_EMAILS.includes((user.email || '').toLowerCase());
 
 /** @returns {Promise<{ uid: string, email: string, lastSeen: Date | null }[]>} admin only */
 export const fetchProfiles = async () => {
