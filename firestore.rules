@@ -42,10 +42,5 @@ service cloud.firestore {
         && entryId.matches('^[A-Za-z0-9_-]{1,64}$')
         && isValidEntry(request.resource.data);
     }
-
-    // Collection-group queries over all users' entries (admin dashboard)
-    match /{path=**}/entries/{entryId} {
-      allow read: if isAdmin();
-    }
   }
 }

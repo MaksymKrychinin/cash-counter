@@ -1,6 +1,6 @@
 // Admin dashboard: monthly spending of every user. Read-only.
 import {
-  isConfigured, watchAuth, login, logout, isAdminUser, fetchProfiles, fetchAllUsersEntries,
+  isConfigured, watchAuth, login, logout, isAdminUser, fetchProfiles, fetchUsersEntries,
 } from './db.js';
 import {
   authErrorMessage, todayISO, monthKey, shiftMonth, monthRange, fmtMonth, node,
@@ -38,7 +38,6 @@ const setState = (patch) => {
 
 const loadErrorMessage = (err) => {
   if (err && err.code === 'permission-denied') return 'Немає доступу. Перевірте, що правила Firestore опубліковані.';
-  if (err && err.code === 'failed-precondition') return 'Потрібен індекс для entries.date (див. README). Посилання на створення — у консолі браузера.';
   return "Не вдалося завантажити дані. Перевірте з'єднання.";
 };
 
@@ -47,7 +46,8 @@ const loadMonth = async () => {
   setState({ loading: true, error: '' });
   try {
     const { start, end } = monthRange(state.month);
-    const [profiles, entries] = await Promise.all([fetchProfiles(), fetchAllUsersEntries(start, end)]);
+    const profiles = await fetchProfiles();
+    const entries = await fetchUsersEntries(profiles.map((p) => p.uid), start, end);
     if (token === loadToken) setState({ profiles, entries, loading: false });
   } catch (err) {
     console.error('Помилка завантаження адмін-даних', err);
@@ -91,8 +91,7 @@ el.refreshBtn.addEventListener('click', loadMonth);
 const buildUserRows = () => {
   const byUid = state.entries.reduce((acc, e) => ({ ...acc, [e.uid]: [...(acc[e.uid] || []), e] }), {});
   const profileByUid = Object.fromEntries(state.profiles.map((p) => [p.uid, p]));
-  // Users that have entries but no profile yet (never opened the new app version)
-  const uids = [...new Set([...state.profiles.map((p) => p.uid), ...Object.keys(byUid)])];
+  const uids = state.profiles.map((p) => p.uid);
   return uids
     .map((uid) => ({
       uid,

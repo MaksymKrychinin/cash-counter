@@ -6,7 +6,7 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, terminate,
   clearIndexedDbPersistence,
-  collection, collectionGroup, doc, setDoc, deleteDoc, getDocs, query, where, orderBy,
+  collection, doc, setDoc, deleteDoc, getDocs, query, where, orderBy,
   onSnapshot, serverTimestamp, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
@@ -163,16 +163,16 @@ export const fetchProfiles = async () => {
 };
 
 /**
- * Entries of all users with startDate <= date < endDate. Admin only; needs the
- * collection-group index on `entries.date` (see README).
- * @param {string} startDate @param {string} endDate
+ * Entries of the given users with startDate <= date < endDate. Admin only.
+ * One query per user: uses Firestore's automatic indexes, so no index setup needed.
+ * @param {string[]} uids @param {string} startDate @param {string} endDate
  * @returns {Promise<(Entry & { uid: string })[]>}
  */
-export const fetchAllUsersEntries = async (startDate, endDate) => {
-  const q = query(collectionGroup(db, 'entries'),
-    where('date', '>=', startDate), where('date', '<', endDate));
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => ({ ...fromDoc(d), uid: d.ref.parent.parent.id }))
-    .filter(isValidEntry);
+export const fetchUsersEntries = async (uids, startDate, endDate) => {
+  const perUser = await Promise.all(uids.map(async (uid) => {
+    const q = query(entriesCol(uid), where('date', '>=', startDate), where('date', '<', endDate));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ ...fromDoc(d), uid })).filter(isValidEntry);
+  }));
+  return perUser.flat();
 };
